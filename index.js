@@ -32,7 +32,7 @@ async function run() {
         //  database
         const Bookify = client.db('Bookify');
         // collection
-        const books = Bookify.collection('test');
+        const books = Bookify.collection('books');
 
 
         // Get all books or get by genre
