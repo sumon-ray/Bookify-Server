@@ -2,7 +2,7 @@
 
 DO NOT TOUCH MAIN BRANCH🌿 
 1. Always pull the code from development branch before start your working.
-2. Do not push on main branch
+2. Do not push directly on the main branch. 
 
 ##WHY IT NEEDS❓
 
