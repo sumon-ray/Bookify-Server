@@ -1,6 +1,6 @@
 const express = require('express')
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
 const app = express();
@@ -35,16 +35,33 @@ async function run() {
         const books = Bookify.collection('test');
 
 
-        // Get all books
+        // Get all books or get by genre
         app.get('/books', async (req, res) => {
-            const result = await books.find().toArray();
+            const genre = req.query.genre;
+            let query = {};
+            if (genre) { query = { genre } }
+            const result = await books.find(query).toArray();
             res.send(result)
         })
+        // get one book
+        app.get('/book/:id', async (req, res) => {
+            const result = await books.findOne({ _id: new ObjectId(req.params.id) });
+            res.send(result);
+        })
         // Add one book
-        app.post('/books', async (req, res) => {
+        app.post('/book', async (req, res) => {
             const result = await books.insertOne(req.body);
             res.send(result);
         })
+        // delete one book
+        app.delete('/book/:id', async (req, res) => {
+            const result = await books.deleteOne({ _id: new ObjectId(req.params.id) });
+            res.send(result);
+        })
+
+
+
+
 
 
 
