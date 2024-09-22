@@ -38,8 +38,14 @@ async function run() {
         // Get all books or get by genre
         app.get('/books', async (req, res) => {
             const genre = req.query.genre;
+            const search = req.query.search;
             let query = {};
+
             if (genre) { query = { genre } }
+            else if (search) {
+                query = { title: { $regex: search , $options: "i"} }
+            }
+
             const result = await books.find(query).toArray();
             res.send(result)
         })
