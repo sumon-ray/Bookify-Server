@@ -33,7 +33,9 @@ async function run() {
         const Bookify = client.db('Bookify');
         // collection
         const books = Bookify.collection('books');
+        const rent = Bookify.collection('rent');
         const test = Bookify.collection('test');
+        const users = Bookify.collection('users');
 
 
         // Get all books or get by genre
@@ -47,8 +49,8 @@ async function run() {
             else if (search) {
                 query = { title: { $regex: search, $options: "i" } }
             }
-            else if(email){
-                query = {AuthorEmail:email}
+            else if (email) {
+                query = { AuthorEmail: email }
             }
 
             const result = await books.find(query).toArray();
@@ -68,6 +70,19 @@ async function run() {
         app.delete('/book/:id', async (req, res) => {
             const result = await books.deleteOne({ _id: new ObjectId(req.params.id) });
             res.send(result);
+        })
+        // get api for rent data
+        app.get('/rent', async (req, res) => {
+            const result = await rent.find().toArray();
+            res.send(result)
+        })
+
+
+
+        // user info get api
+        app.get('/users', async (req, res) => {
+            const result = await users.find().toArray();
+            res.send(result)
         })
 
 
