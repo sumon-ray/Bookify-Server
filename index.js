@@ -79,9 +79,28 @@ async function run() {
 
 
 
+
         // user info get api
         app.get('/users', async (req, res) => {
             const result = await users.find().toArray();
+            res.send(result)
+        })
+        app.delete('/user', async (req, res) => {
+            const result = await users.deleteOne({ _id: new ObjectId(req.query.id) })
+            res.send(result)
+        })
+        app.put('/user', async (req, res) => {
+            const filter = { _id: new ObjectId(req.query.id)}
+            const update = {
+                $set: {
+                    name: req.body.name,
+                    email: req.body.email,
+                    password: req.body.password,
+                    userImage: req.body.userImage,
+                    role: req.body.role
+                },
+            };
+            const result = await users.updateOne(filter, update)
             res.send(result)
         })
 
