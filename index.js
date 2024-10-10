@@ -52,7 +52,7 @@ async function run() {
         const rent = Bookify.collection('rent');
         const test = Bookify.collection('test');
         const users = Bookify.collection('users');
-        const reviews = Bookify.collection('review');
+        const reviews = Bookify.collection('reviews');
 
 
         // Get all books or get by genre
@@ -128,7 +128,12 @@ async function run() {
             res.send(result)
         })
         app.get('/reviews', async (req, res) => {
-            const result = await reviews.find().toArray();
+            const bookId = req.query.bookId
+            let query = {}
+            if (bookId) {
+                query = { bookId: bookId }
+            }
+            const result = await reviews.find(query).toArray();
             res.send(result);
         })
 
