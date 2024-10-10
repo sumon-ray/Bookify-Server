@@ -9,6 +9,22 @@ app.use(cors());
 app.use(express.json());
 const port = process.env.PORT || 4000;
 
+
+// CORS configuration
+const allowedOrigins = ['https://bookify-mocha.vercel.app', 'http://localhost:3000']; // Add your frontend URLs here
+app.use(cors({
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
+}));
+
+
 // home path
 app.get("/", (req, res) => {
     res.send('run properly')
@@ -78,8 +94,6 @@ async function run() {
         })
 
 
-
-
         // user info get api
         app.get('/users', async (req, res) => {
             const result = await users.find().toArray();
@@ -103,9 +117,6 @@ async function run() {
             const result = await users.updateOne(filter, update)
             res.send(result)
         })
-
-
-
 
 
 
