@@ -36,6 +36,7 @@ async function run() {
         const rent = Bookify.collection('rent');
         const test = Bookify.collection('test');
         const users = Bookify.collection('users');
+        const review = Bookify.collection('review');
 
 
         // Get all books or get by genre
@@ -78,9 +79,7 @@ async function run() {
         })
 
 
-
-
-        // user info get api
+        // user api
         app.get('/users', async (req, res) => {
             const result = await users.find().toArray();
             res.send(result)
@@ -90,7 +89,7 @@ async function run() {
             res.send(result)
         })
         app.put('/user', async (req, res) => {
-            const filter = { _id: new ObjectId(req.query.id)}
+            const filter = { _id: new ObjectId(req.query.id) }
             const update = {
                 $set: {
                     name: req.body.name,
@@ -104,6 +103,12 @@ async function run() {
             res.send(result)
         })
 
+
+        // review and rating apis
+        app.post('/review', async (req, res) => {
+            const result = await review.insertOne(req.body)
+            res.send(result)
+        })
 
 
 
