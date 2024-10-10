@@ -1,5 +1,3 @@
-https://bookify-server-lilac.vercel.app
-
 ##Consideration 📍 
 
 DO NOT TOUCH MAIN BRANCH🌿 
