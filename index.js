@@ -62,7 +62,10 @@ async function run() {
             const email = req.query.email;
             let query = {};
 
-            if (genre) { query = { genre } }
+            if (email && genre) {
+                query = { AuthorEmail: email, genre:genre }
+            }
+            else if (genre) { query = { genre } }
             else if (search) {
                 query = { title: { $regex: search, $options: "i" } }
             }
