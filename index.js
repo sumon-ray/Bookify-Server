@@ -52,6 +52,8 @@ async function run() {
         const rent = Bookify.collection('rent');
         const test = Bookify.collection('test');
         const users = Bookify.collection('users');
+        const audioBook = Bookify.collection('audioBook');
+
 
 
         // Get all books or get by genre
@@ -118,6 +120,39 @@ async function run() {
             res.send(result)
         })
 
+        
+//  update my books api 
+app.patch('/books/:id', async (req, res) => {
+    const id = req.params.id;
+    const {book} = req.body;
+    const options = { upsert: true };
+    const filter = { _id: new ObjectId(id) };
+    const updateDoc = {
+      $set: {
+        book: book
+      },
+    };
+    const result = await books.updateOne(filter, updateDoc, options);
+    res.send(result);
+  })
+
+
+//   get all audio books api
+ 
+  app.get('/audioBook', async (req, res) => {
+    const result = await audioBook.find().toArray();
+     res.send(result)
+})
+
+
+// delete my books api 
+
+app.delete("/books/:id", async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) }
+    const result = await books.deleteOne(query);
+    res.send(result)
+  })
 
 
 
