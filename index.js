@@ -49,10 +49,11 @@ async function run() {
         const Bookify = client.db('Bookify');
         // collection
         const books = Bookify.collection('books');
-        const rent = Bookify.collection('rent');
         const test = Bookify.collection('test');
         const users = Bookify.collection('users');
         const reviews = Bookify.collection('reviews');
+        const rent = Bookify.collection('rent');
+        const audioBook = Bookify.collection('audioBook');
 
         // exchange books
         // Get all books or get by genre
@@ -175,6 +176,39 @@ async function run() {
             }
         });
 
+        
+//  update my books api 
+app.patch('/books/:id', async (req, res) => {
+    const id = req.params.id;
+    const {book} = req.body;
+    const options = { upsert: true };
+    const filter = { _id: new ObjectId(id) };
+    const updateDoc = {
+      $set: {
+        book: book
+      },
+    };
+    const result = await books.updateOne(filter, updateDoc, options);
+    res.send(result);
+  })
+
+
+//   get all audio books api
+ 
+  app.get('/audioBook', async (req, res) => {
+    const result = await audioBook.find().toArray();
+     res.send(result)
+})
+
+
+// delete my books api 
+
+app.delete("/books/:id", async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) }
+    const result = await books.deleteOne(query);
+    res.send(result)
+  })
 
         // review and rating apis
         app.post('/review', async (req, res) => {
