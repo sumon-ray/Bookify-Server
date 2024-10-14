@@ -54,7 +54,7 @@ async function run() {
         const users = Bookify.collection('users');
         const reviews = Bookify.collection('reviews');
 
-
+        // exchange books
         // Get all books or get by genre
         app.get('/books', async (req, res) => {
             const genre = req.query.genre;
@@ -91,11 +91,26 @@ async function run() {
             const result = await books.deleteOne({ _id: new ObjectId(req.params.id) });
             res.send(result);
         })
+
+        // rent books
         // get api for rent data
         app.get('/rent', async (req, res) => {
-            const result = await rent.find().toArray();
-            res.send(result)
+            const currentPage = parseInt(req?.query?.currentPage) || 1
+            const limit = parseInt(req?.query?.limit) || 10
+            const skip = (currentPage - 1) * limit
+
+            const totalBooks = await rent.countDocuments();
+            const totalPages = Math.ceil(totalBooks / limit);
+            const result = await rent.find().skip(skip).limit(limit).toArray();
+            res.send({ result, totalPages })
         })
+
+
+
+
+
+
+
 
 
         // user api
@@ -107,7 +122,6 @@ async function run() {
             const result = await users.deleteOne({ _id: new ObjectId(req.query.id) })
             res.send(result)
         })
-
         app.put("/user", async (req, res) => {
             try {
                 const filter = { _id: new ObjectId(req.query.id) };
@@ -139,7 +153,6 @@ async function run() {
                 res.status(500).send("An error occurred while updating the user.");
             }
         });
-
         app.patch("/user", async (req, res) => {
             const filter = { _id: new ObjectId(req.query.id) };
             // Initialize an empty update object
@@ -152,15 +165,15 @@ async function run() {
             if (req.body.role) updateFields.role = req.body.role;
             // Use $set to update only provided fields
             const update = { $set: updateFields };
-      
+
             try {
-              const result = await users.updateOne(filter, update);
-              res.send(result);
+                const result = await users.updateOne(filter, update);
+                res.send(result);
             } catch (error) {
-              console.error("Error updating user:", error);
-              res.status(500).send({ error: "Failed to update user" });
+                console.error("Error updating user:", error);
+                res.status(500).send({ error: "Failed to update user" });
             }
-          });
+        });
 
 
         // review and rating apis
