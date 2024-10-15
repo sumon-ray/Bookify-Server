@@ -92,6 +92,22 @@ async function run() {
             const result = await books.deleteOne({ _id: new ObjectId(req.params.id) });
             res.send(result);
         })
+        //  update my books api 
+        app.patch('/book/:id', async (req, res) => {
+            const id = req.params.id;
+            const { book } = req.body;
+            const options = { upsert: true };
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    book: book
+                },
+            };
+            const result = await books.updateOne(filter, updateDoc, options);
+            res.send(result);
+        })
+
+
 
         // rent books
         // get api for rent data
@@ -107,9 +123,12 @@ async function run() {
         })
 
 
-
-
-
+        // audioBooks
+        //  get all audio books api
+        app.get('/audioBook', async (req, res) => {
+            const result = await audioBook.find().toArray();
+            res.send(result)
+        })
 
 
 
@@ -176,39 +195,7 @@ async function run() {
             }
         });
 
-        
-//  update my books api 
-app.patch('/books/:id', async (req, res) => {
-    const id = req.params.id;
-    const {book} = req.body;
-    const options = { upsert: true };
-    const filter = { _id: new ObjectId(id) };
-    const updateDoc = {
-      $set: {
-        book: book
-      },
-    };
-    const result = await books.updateOne(filter, updateDoc, options);
-    res.send(result);
-  })
 
-
-//   get all audio books api
- 
-  app.get('/audioBook', async (req, res) => {
-    const result = await audioBook.find().toArray();
-     res.send(result)
-})
-
-
-// delete my books api 
-
-app.delete("/books/:id", async (req, res) => {
-    const id = req.params.id;
-    const query = { _id: new ObjectId(id) }
-    const result = await books.deleteOne(query);
-    res.send(result)
-  })
 
         // review and rating apis
         app.post('/review', async (req, res) => {
@@ -226,6 +213,8 @@ app.delete("/books/:id", async (req, res) => {
         })
 
 
+
+        
         // test api
         app.post('/test', async (req, res) => {
             const result = await test.insertOne(req.body);
