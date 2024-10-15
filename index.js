@@ -1,5 +1,6 @@
 const express = require('express')
 const cors = require("cors");
+const bcrypt = require("bcrypt");
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
@@ -131,8 +132,6 @@ async function run() {
         })
 
 
-
-
         // user api
         app.get('/users', async (req, res) => {
             const result = await users.find().toArray();
@@ -194,6 +193,28 @@ async function run() {
                 res.status(500).send({ error: "Failed to update user" });
             }
         });
+        // POST route to handle user signup
+        app.post("/user", async (req, res) => {
+            try {
+                const newUser = req.body;
+
+                // Check if the user already exists
+                const exist = await users.findOne({ email: newUser.email });
+                if (exist) {
+                    return res.status(409).json({ message: "User Exists" }); // Conflict if user exists
+                }
+                // Hash the password
+                const hashPassword = bcrypt.hashSync(newUser.password, 15);
+                // Insert new user
+                await users.insertOne({ ...newUser, password: hashPassword });
+                return res.status(200).json({ message: "User created" });
+            } catch (error) {
+                return res.status(500).json({
+                    message: "Something went wrong from catch",
+                    error: error.message, // Provide a more specific error message
+                });
+            }
+        });
 
 
 
@@ -213,8 +234,6 @@ async function run() {
         })
 
 
-
-        
         // test api
         app.post('/test', async (req, res) => {
             const result = await test.insertOne(req.body);
@@ -235,4 +254,3 @@ run().catch(console.dir);
 app.listen(port, () => {
     console.log('bookify server is run properly')
 })
-
