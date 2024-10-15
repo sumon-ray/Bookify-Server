@@ -78,7 +78,6 @@ async function run() {
             const result = await books.find(query).toArray();
             res.send(result)
         })
-        
         // get one book
         app.get('/book/:id', async (req, res) => {
             const result = await books.findOne({ _id: new ObjectId(req.params.id) });
