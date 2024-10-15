@@ -54,32 +54,24 @@ async function run() {
         const users = Bookify.collection('users');
 
 
-      // Get all books by genre && Pagination
-      app.get("/books", async (req, res) => {
-        try {
-          const genre = req.query.genre || "";
-          const search = req.query.search || "";
-          const email = req.query.email || "";
-          const page = parseInt(req.query.page) || 1;
-          const limit = parseInt(req.query.limit) || 8;
-          const skip = (page - 1) * limit;
-      
-          let query = {};
-          if (email) query.AuthorEmail = email;
-          if (genre) query.genre = genre;
-          if (search) query.title = { $regex: search, $options: "i" };
-      
-          const totalBooks = await books.countDocuments(query);
-          const totalPages = Math.ceil(totalBooks / limit);
-          const result = await books.find(query).skip(skip).limit(limit).toArray();
-          
-          res.send({ books: result, totalPages });
-        } catch (error) {
-          console.error("Error fetching books:", error);
-          res.status(500).send({ error: "Failed to fetch books" });
-        }
-      });
-      
+        // Get all books or get by genre
+        app.get('/books', async (req, res) => {
+            const genre = req.query.genre;
+            const search = req.query.search;
+            const email = req.query.email;
+            let query = {};
+
+            if (genre) { query = { genre } }
+            else if (search) {
+                query = { title: { $regex: search, $options: "i" } }
+            }
+            else if (email) {
+                query = { AuthorEmail: email }
+            }
+
+            const result = await books.find(query).toArray();
+            res.send(result)
+        })
         // get one book
         app.get('/book/:id', async (req, res) => {
             const result = await books.findOne({ _id: new ObjectId(req.params.id) });
@@ -149,4 +141,3 @@ run().catch(console.dir);
 app.listen(port, () => {
     console.log('bookify server is run properly')
 })
-
