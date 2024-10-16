@@ -138,13 +138,18 @@ async function run() {
       const result = await books.updateOne(filter, updateDoc, options);
       res.send(result);
     });
-
-
     // api for book exchange
     app.post('/take-book', async (req, res) => {
       const result = await exchange.insertOne(req.body)
       res.send(result)
     })
+    app.get('/take-book', async (req, res) => {
+      const result = await exchange.find({ requester: req?.query?.email }).toArray();
+      res.send(result)
+    })
+
+
+
 
     // rent books
     // get api for rent data
