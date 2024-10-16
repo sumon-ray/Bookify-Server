@@ -50,6 +50,7 @@ async function run() {
     const Bookify = client.db("Bookify");
     // collection
     const books = Bookify.collection("books");
+    const exchange = Bookify.collection("exchange");
     const test = Bookify.collection("test");
     const users = Bookify.collection("users");
     const reviews = Bookify.collection("reviews");
@@ -77,7 +78,6 @@ async function run() {
       const result = await books.find(query).toArray();
       res.send(result);
     });
-
     // pagination of dashboard's home route
     app.get("/books/paginated", async (req, res) => {
       try {
@@ -107,7 +107,6 @@ async function run() {
         res.status(500).send({ error: "Failed to fetch paginated books" });
       }
     });
-
     // get one book
     app.get("/book/:id", async (req, res) => {
       const result = await books.findOne({ _id: new ObjectId(req.params.id) });
@@ -125,42 +124,63 @@ async function run() {
       });
       res.send(result);
     });
+    //  update my books api
+    app.patch("/book/:id", async (req, res) => {
+      const id = req.params.id;
+      const { book } = req.body;
+      const options = { upsert: true };
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          book: book,
+        },
+      };
+      const result = await books.updateOne(filter, updateDoc, options);
+      res.send(result);
+    });
+    // api for book exchange
+    app.post('/take-book', async (req, res) => {
+      const result = await exchange.insertOne(req.body)
+      res.send(result)
+    })
+    app.get('/take-book', async (req, res) => {
+      const result = await exchange.find({ requester: req?.query?.email }).toArray();
+      res.send(result)
+    })
 
 
-// Update book
-app.put("/book/:id", async (req, res) => {
-  const id = req.params.id;
-  const updateDoc = {};
+    // Update book
+    app.put("/book/:id", async (req, res) => {
+      const id = req.params.id;
+      const updateDoc = {};
 
-  // Dynamically set only the fields that are provided in the request body
-  const allowedFields = [
-    "title", "author", "genre", "condition", "description",
-    "coverImage", "exchangeStatus", "publishYear", "totalPage",
-    "location", "rating", "AuthorEmail", "AuthorProfile", "owner"
-  ];
+      // Dynamically set only the fields that are provided in the request body
+      const allowedFields = [
+        "title", "author", "genre", "condition", "description",
+        "coverImage", "exchangeStatus", "publishYear", "totalPage",
+        "location", "rating", "AuthorEmail", "AuthorProfile", "owner"
+      ];
 
-  allowedFields.forEach((field) => {
-    if (req.body[field] !== undefined) {
-      updateDoc[field] = req.body[field];
-    }
-  });
+      allowedFields.forEach((field) => {
+        if (req.body[field] !== undefined) {
+          updateDoc[field] = req.body[field];
+        }
+      });
 
-  const filter = { _id: new ObjectId(id) };
+      const filter = { _id: new ObjectId(id) };
 
-  try {
-    const result = await books.updateOne(filter, { $set: updateDoc });
+      try {
+        const result = await books.updateOne(filter, { $set: updateDoc });
 
-    if (result.modifiedCount === 0) {
-      return res.status(404).send({ message: "Book not found or no changes made." });
-    }
-    res.send(result);
-  } catch (error) {
-    console.error("Error updating book:", error);
-    res.status(500).send({ error: "Failed to update book" });
-  }
-});
-
-
+        if (result.modifiedCount === 0) {
+          return res.status(404).send({ message: "Book not found or no changes made." });
+        }
+        res.send(result);
+      } catch (error) {
+        console.error("Error updating book:", error);
+        res.status(500).send({ error: "Failed to update book" });
+      }
+    });
 
     // rent books
     // get api for rent data
@@ -168,9 +188,8 @@ app.put("/book/:id", async (req, res) => {
       const currentPage = parseInt(req?.query?.currentPage) || 1;
       const limit = parseInt(req?.query?.limit) || 10;
       const skip = (currentPage - 1) * limit;
-      const { Author, Publisher, PublishYear, Language, Price, Genre } = req?.query
-      let [minPrice, maxPrice] = Price.split(",").map(Number);
-
+      const { Author, Publisher, PublishYear, Language, Price, Genre } = req?.query || {}
+      let [minPrice, maxPrice] = Price?.split(",").map(Number) || [350, 500]
 
       // console.log(Genre.split(','))
       let query = {}
@@ -190,29 +209,108 @@ app.put("/book/:id", async (req, res) => {
           Genre: { $in: Genre.split(',') }
         }
       }
-
-      // else if (minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice)) {
-      //   query = {
-      //     $expr: {
-      //       $and: [
-      //         { $gte: [{ $toDouble: "$Price" }, minPrice] },
-      //         { $lte: [{ $toDouble: "$Price" }, maxPrice] }
-      //       ]
-      //     }
-      //   }
-      // }
-
-
-      // else if (Author && Publisher && PublishYear) {
-      //   query = { Author, Publisher, "Year of Publication": PublishYear }
-      // }
-      // else if (Author && Publisher && PublishYear) {
-      //   query = { Author, Publisher, "Year of Publication": PublishYear }
-      // }
-      // else if (Publisher) {
-      //   query = { Publisher }
-      // }
-
+      else if (Publisher && PublishYear && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+        query = {
+          Publisher,
+          "Year of Publication": PublishYear,
+          Language,
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          },
+          Genre: { $in: Genre.split(',') }
+        }
+      }
+      else if (Author && PublishYear && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+        query = {
+          Author,
+          "Year of Publication": PublishYear,
+          Language,
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          },
+          Genre: { $in: Genre.split(',') }
+        }
+      }
+      else if (Author && Publisher && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+        query = {
+          Author,
+          Publisher,
+          Language,
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          },
+          Genre: { $in: Genre.split(',') }
+        }
+      }
+      else if (PublishYear && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+        query = {
+          "Year of Publication": PublishYear,
+          Language,
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          },
+          Genre: { $in: Genre.split(',') }
+        }
+      }
+      else if (Author && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+        query = {
+          Author,
+          Language,
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          },
+          Genre: { $in: Genre.split(',') }
+        }
+      }
+      else if (Publisher && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+        query = {
+          Publisher,
+          Language,
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          },
+          Genre: { $in: Genre.split(',') }
+        }
+      }
+      else if (minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+        query = {
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          },
+          Genre: { $in: Genre.split(',') }
+        }
+      }
+      else if (minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice)) {
+        query = {
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          },
+        }
+      }
 
       const totalBooks = await rent.countDocuments(query);
       const totalPages = Math.ceil(totalBooks / limit);
@@ -225,8 +323,6 @@ app.put("/book/:id", async (req, res) => {
       const result = await rent.find().toArray();
       res.send(result)
     })
-
-
 
     // audioBooks
     //  get all audio books api
