@@ -146,12 +146,58 @@ async function run() {
       const currentPage = parseInt(req?.query?.currentPage) || 1;
       const limit = parseInt(req?.query?.limit) || 10;
       const skip = (currentPage - 1) * limit;
+      const { Author, Publisher, PublishYear, Language, Price } = req?.query
+      let [minPrice, maxPrice] = Price.split(",").map(Number);
+      // maxPrice = maxPrice === 1 ? 500 : maxPrice
 
-      const totalBooks = await rent.countDocuments();
+
+      console.log(minPrice, maxPrice)
+      let query = {}
+
+      if (Author && Publisher && PublishYear && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice)) {
+        query = {
+          Author,
+          Publisher,
+          "Year of Publication": PublishYear,
+          Language,
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          }
+        } 
+      }
+      else if (minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice)) {
+        query = {
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          }
+        }
+      }
+
+
+      // else if (Author && Publisher && PublishYear) {
+      //   query = { Author, Publisher, "Year of Publication": PublishYear }
+      // }
+      // else if (Author && Publisher && PublishYear) {
+      //   query = { Author, Publisher, "Year of Publication": PublishYear }
+      // }
+      // else if (Publisher) {
+      //   query = { Publisher }
+      // }
+
+
+      const totalBooks = await rent.countDocuments(query);
       const totalPages = Math.ceil(totalBooks / limit);
-      const result = await rent.find().skip(skip).limit(limit).toArray();
+      const result = await rent.find(query).skip(skip).limit(limit).toArray();
       res.send({ result, totalPages });
     });
+
+
 
     // audioBooks
     //  get all audio books api
