@@ -125,20 +125,16 @@ async function run() {
       });
       res.send(result);
     });
-    //  update my books api
-    app.patch("/book/:id", async (req, res) => {
-      const id = req.params.id;
-      const { book } = req.body;
-      const options = { upsert: true };
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          book: book,
-        },
-      };
-      const result = await books.updateOne(filter, updateDoc, options);
-      res.send(result);
-    });
+
+
+
+
+
+
+
+
+
+
 
     // rent books
     // get api for rent data
