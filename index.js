@@ -146,15 +146,14 @@ async function run() {
       const currentPage = parseInt(req?.query?.currentPage) || 1;
       const limit = parseInt(req?.query?.limit) || 10;
       const skip = (currentPage - 1) * limit;
-      const { Author, Publisher, PublishYear, Language, Price } = req?.query
+      const { Author, Publisher, PublishYear, Language, Price, Genre } = req?.query
       let [minPrice, maxPrice] = Price.split(",").map(Number);
-      // maxPrice = maxPrice === 1 ? 500 : maxPrice
 
 
-      console.log(minPrice, maxPrice)
+      // console.log(Genre.split(','))
       let query = {}
 
-      if (Author && Publisher && PublishYear && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice)) {
+      if (Author && Publisher && PublishYear && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
         query = {
           Author,
           Publisher,
@@ -165,19 +164,21 @@ async function run() {
               { $gte: [{ $toDouble: "$Price" }, minPrice] },
               { $lte: [{ $toDouble: "$Price" }, maxPrice] }
             ]
-          }
-        } 
-      }
-      else if (minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice)) {
-        query = {
-          $expr: {
-            $and: [
-              { $gte: [{ $toDouble: "$Price" }, minPrice] },
-              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
-            ]
-          }
+          },
+          Genre: { $in: Genre.split(',') }
         }
       }
+
+      // else if (minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice)) {
+      //   query = {
+      //     $expr: {
+      //       $and: [
+      //         { $gte: [{ $toDouble: "$Price" }, minPrice] },
+      //         { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+      //       ]
+      //     }
+      //   }
+      // }
 
 
       // else if (Author && Publisher && PublishYear) {
@@ -196,6 +197,12 @@ async function run() {
       const result = await rent.find(query).skip(skip).limit(limit).toArray();
       res.send({ result, totalPages });
     });
+
+    // for only genre
+    app.get("/rent-values", async (req, res) => {
+      const result = await rent.find().toArray();
+      res.send(result)
+    })
 
 
 
