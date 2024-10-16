@@ -125,20 +125,42 @@ async function run() {
       });
       res.send(result);
     });
-    //  update my books api
-    app.patch("/book/:id", async (req, res) => {
-      const id = req.params.id;
-      const { book } = req.body;
-      const options = { upsert: true };
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          book: book,
-        },
-      };
-      const result = await books.updateOne(filter, updateDoc, options);
-      res.send(result);
-    });
+
+
+// Update book
+app.put("/book/:id", async (req, res) => {
+  const id = req.params.id;
+  const updateDoc = {};
+
+  // Dynamically set only the fields that are provided in the request body
+  const allowedFields = [
+    "title", "author", "genre", "condition", "description",
+    "coverImage", "exchangeStatus", "publishYear", "totalPage",
+    "location", "rating", "AuthorEmail", "AuthorProfile", "owner"
+  ];
+
+  allowedFields.forEach((field) => {
+    if (req.body[field] !== undefined) {
+      updateDoc[field] = req.body[field];
+    }
+  });
+
+  const filter = { _id: new ObjectId(id) };
+
+  try {
+    const result = await books.updateOne(filter, { $set: updateDoc });
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).send({ message: "Book not found or no changes made." });
+    }
+    res.send(result);
+  } catch (error) {
+    console.error("Error updating book:", error);
+    res.status(500).send({ error: "Failed to update book" });
+  }
+});
+
+
 
     // rent books
     // get api for rent data
