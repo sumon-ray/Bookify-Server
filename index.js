@@ -50,6 +50,7 @@ async function run() {
     const Bookify = client.db("Bookify");
     // collection
     const books = Bookify.collection("books");
+    const exchange = Bookify.collection("exchange");
     const test = Bookify.collection("test");
     const users = Bookify.collection("users");
     const reviews = Bookify.collection("reviews");
@@ -77,7 +78,6 @@ async function run() {
       const result = await books.find(query).toArray();
       res.send(result);
     });
-
     // pagination of dashboard's home route
     app.get("/books/paginated", async (req, res) => {
       try {
@@ -107,7 +107,6 @@ async function run() {
         res.status(500).send({ error: "Failed to fetch paginated books" });
       }
     });
-
     // get one book
     app.get("/book/:id", async (req, res) => {
       const result = await books.findOne({ _id: new ObjectId(req.params.id) });
@@ -140,15 +139,21 @@ async function run() {
       res.send(result);
     });
 
+
+    // api for book exchange
+    app.post('/take-book', async (req, res) => {
+      const result = await exchange.insertOne(req.body)
+      res.send(result)
+    })
+
     // rent books
     // get api for rent data
     app.get("/rent", async (req, res) => {
       const currentPage = parseInt(req?.query?.currentPage) || 1;
       const limit = parseInt(req?.query?.limit) || 10;
       const skip = (currentPage - 1) * limit;
-      const { Author, Publisher, PublishYear, Language, Price, Genre } = req?.query
-      let [minPrice, maxPrice] = Price.split(",").map(Number);
-
+      const { Author, Publisher, PublishYear, Language, Price, Genre } = req?.query || {}
+      let [minPrice, maxPrice] = Price?.split(",").map(Number) || [350, 500]
 
       // console.log(Genre.split(','))
       let query = {}
@@ -168,29 +173,108 @@ async function run() {
           Genre: { $in: Genre.split(',') }
         }
       }
-
-      // else if (minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice)) {
-      //   query = {
-      //     $expr: {
-      //       $and: [
-      //         { $gte: [{ $toDouble: "$Price" }, minPrice] },
-      //         { $lte: [{ $toDouble: "$Price" }, maxPrice] }
-      //       ]
-      //     }
-      //   }
-      // }
-
-
-      // else if (Author && Publisher && PublishYear) {
-      //   query = { Author, Publisher, "Year of Publication": PublishYear }
-      // }
-      // else if (Author && Publisher && PublishYear) {
-      //   query = { Author, Publisher, "Year of Publication": PublishYear }
-      // }
-      // else if (Publisher) {
-      //   query = { Publisher }
-      // }
-
+      else if (Publisher && PublishYear && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+        query = {
+          Publisher,
+          "Year of Publication": PublishYear,
+          Language,
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          },
+          Genre: { $in: Genre.split(',') }
+        }
+      }
+      else if (Author && PublishYear && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+        query = {
+          Author,
+          "Year of Publication": PublishYear,
+          Language,
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          },
+          Genre: { $in: Genre.split(',') }
+        }
+      }
+      else if (Author && Publisher && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+        query = {
+          Author,
+          Publisher,
+          Language,
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          },
+          Genre: { $in: Genre.split(',') }
+        }
+      }
+      else if (PublishYear && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+        query = {
+          "Year of Publication": PublishYear,
+          Language,
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          },
+          Genre: { $in: Genre.split(',') }
+        }
+      }
+      else if (Author && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+        query = {
+          Author,
+          Language,
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          },
+          Genre: { $in: Genre.split(',') }
+        }
+      }
+      else if (Publisher && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+        query = {
+          Publisher,
+          Language,
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          },
+          Genre: { $in: Genre.split(',') }
+        }
+      }
+      else if (minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+        query = {
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          },
+          Genre: { $in: Genre.split(',') }
+        }
+      }
+      else if (minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice)) {
+        query = {
+          $expr: {
+            $and: [
+              { $gte: [{ $toDouble: "$Price" }, minPrice] },
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
+            ]
+          },
+        }
+      }
 
       const totalBooks = await rent.countDocuments(query);
       const totalPages = Math.ceil(totalBooks / limit);
