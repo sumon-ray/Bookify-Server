@@ -12,6 +12,7 @@ const port = process.env.PORT || 4000;
 // CORS configuration
 const allowedOrigins = [
   "https://bookify-mocha.vercel.app",
+  'https://bookify06.vercel.app',
   "http://localhost:3000",
 ];
 app.use(
@@ -67,19 +68,21 @@ async function run() {
       const totalUsers = await users.countDocuments();
       const book = await books.find().toArray()
       const topBooks = book.filter(b => b.rating < 4.5)
-      const totalReview = await reviews.countDocuments();
-
-
+      const totalReview = await reviews.find().toArray();
+      const Users = await users.find().toArray()
+      const date = new Date();
+      const thisMonth = date.getMonth() + 1
+      const newUsers = Users.filter((u) => parseInt(u.createdAt.toLocaleString().split('/')[0]) === thisMonth)
       res.send({
         exchangeBooks,
         rentBooks,
         audioBooks,
         totalUsers,
-        topBooks: topBooks.length,
-        totalReview
+        topBooks,
+        newUsers,
+        totalReview,
       })
     })
-
 
     // exchange books
     // Get all books or get by genre
