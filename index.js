@@ -50,12 +50,36 @@ async function run() {
     const Bookify = client.db("Bookify");
     // collection
     const books = Bookify.collection("books");
+    const takeBook = Bookify.collection("takeBook");
+    const giveBook = Bookify.collection("giveBook");
     const exchange = Bookify.collection("exchange");
     const test = Bookify.collection("test");
     const users = Bookify.collection("users");
     const reviews = Bookify.collection("reviews");
     const rent = Bookify.collection("rent");
     const audioBook = Bookify.collection("audioBook");
+
+
+    app.get('/dashboard', async (req, res) => {
+      const exchangeBooks = await books.countDocuments();
+      const rentBooks = await rent.countDocuments();
+      const audioBooks = await audioBook.countDocuments();
+      const totalUsers = await users.countDocuments();
+      const book = await books.find().toArray()
+      const topBooks = book.filter(b => b.rating < 4.5)
+      const totalReview = await reviews.countDocuments();
+
+
+      res.send({
+        exchangeBooks,
+        rentBooks,
+        audioBooks,
+        totalUsers,
+        topBooks: topBooks.length,
+        totalReview
+      })
+    })
+
 
     // exchange books
     // Get all books or get by genre
@@ -138,13 +162,32 @@ async function run() {
       const result = await books.updateOne(filter, updateDoc, options);
       res.send(result);
     });
+
+
     // api for book exchange
     app.post('/take-book', async (req, res) => {
-      const result = await exchange.insertOne(req.body)
+      const result = await takeBook.insertOne(req.body)
+      res.send(result)
+    })
+    app.post('/give-book', async (req, res) => {
+      const result = await giveBook.insertOne(req.body)
       res.send(result)
     })
     app.get('/take-book', async (req, res) => {
-      const result = await exchange.find({ requester: req?.query?.email }).toArray();
+      const result = await takeBook.find({ requester: req?.query?.email }).toArray();
+      res.send(result)
+    })
+    app.get('/give-book', async (req, res) => {
+      const result = await giveBook.find({ requester: req?.query?.email }).toArray();
+      res.send(result)
+    })
+
+    app.post('/exchange', async (req, res) => {
+      const result = await exchange.insertOne(req.body)
+      res.send(result)
+    })
+    app.get('/exchange', async (req, res) => {
+      const result = await exchange.find().toArray();
       res.send(result)
     })
 
