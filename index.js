@@ -132,7 +132,6 @@ app.put("/book/:id", async (req, res) => {
   const id = req.params.id;
   const updateDoc = {};
 
-  // Dynamically set only the fields that are provided in the request body
   const allowedFields = [
     "title", "author", "genre", "condition", "description",
     "coverImage", "exchangeStatus", "publishYear", "totalPage",
@@ -159,8 +158,6 @@ app.put("/book/:id", async (req, res) => {
     res.status(500).send({ error: "Failed to update book" });
   }
 });
-
-
 
     // rent books
     // get api for rent data
