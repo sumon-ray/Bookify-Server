@@ -13,10 +13,12 @@
   "description": "",
   "dependencies": {
     "bcrypt": "^5.1.1",
+    "cohere-ai": "^7.14.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "mongodb": "^6.9.0",
-    "mongoose": "^8.6.3"
+    "mongoose": "^8.6.3",
+    "openai": "^4.68.1"
   }
 }
