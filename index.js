@@ -190,6 +190,8 @@ async function run() {
       }
     })
     app.post('/give-book', async (req, res) => {
+      const existed = await giveBook.findOne({ _id: req?.query?.id })
+      if (existed) return res.send({ message: "Already added in give books" })
       const result = await giveBook.insertOne(req.body)
       res.send(result)
     })
@@ -209,7 +211,7 @@ async function run() {
     app.get('/exchange', async (req, res) => {
       const result = await exchange.find().toArray();
       res.send(result)
-    })
+    }) 
 
 
     // Update book
