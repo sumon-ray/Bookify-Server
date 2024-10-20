@@ -169,10 +169,29 @@ async function run() {
 
     // api for book exchange
     app.post('/take-book', async (req, res) => {
-      const result = await takeBook.insertOne(req.body)
-      res.send(result)
+      const requesterBooks = await takeBook.find({ requester: req?.query?.email }).toArray()
+      const uniqueBook = await takeBook.findOne({ _id: req?.query?.id })
+      if (uniqueBook) {
+        return res.send({ message: 'You have already added this book.' });
+      }
+
+      if (requesterBooks[0]?.AuthorEmail === req?.query?.AuthorEmail) {
+        const result = await takeBook.insertOne(req.body)
+        return res.send(result)
+      }
+      else {
+        if (requesterBooks?.length === 0) {
+          const result = await takeBook.insertOne(req.body)
+          return res.send(result)
+        }
+        else {
+          return res.send({ message: 'only one owner selected' });
+        }
+      }
     })
     app.post('/give-book', async (req, res) => {
+      const existed = await giveBook.findOne({ _id: req?.query?.id })
+      if (existed) return res.send({ message: "Already added in give books" })
       const result = await giveBook.insertOne(req.body)
       res.send(result)
     })
@@ -192,7 +211,7 @@ async function run() {
     app.get('/exchange', async (req, res) => {
       const result = await exchange.find().toArray();
       res.send(result)
-    })
+    }) 
 
 
     // Update book
