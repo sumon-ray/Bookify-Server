@@ -105,8 +105,8 @@ async function run() {
         query = { title: { $regex: search, $options: "i" } };
       } else if (email) {
         query = { AuthorEmail: email };
-      } 
-      
+      }
+
       if (excludeEmail) {
         query = { AuthorEmail: { $ne: excludeEmail } };
       }
@@ -185,7 +185,7 @@ async function run() {
       }
       if (requesterBooks[0]?.AuthorEmail === req?.query?.AuthorEmail) {
         const result = await takeBook.insertOne(req.body)
-        return res.send({result,message:"Book added successfully!"})
+        return res.send({ result, message: "Book added successfully!" })
       }
       else {
         if (requesterBooks?.length === 0) {
@@ -193,7 +193,7 @@ async function run() {
           return res.send(result)
         }
         else {
-          return res.send({ message:`All books in this exchange must come from ${requesterBooks[0]?.owner}`});
+          return res.send({ message: `All books in this exchange must come from ${requesterBooks[0]?.owner}` });
         }
       }
     })
@@ -201,7 +201,7 @@ async function run() {
       const existed = await giveBook.findOne({ _id: req?.query?.id })
       if (existed) return res.send({ message: "Already added in give books" })
       const result = await giveBook.insertOne(req.body)
-      res.send({result,message:`Book added successfully!`})
+      res.send({ result, message: `Book added successfully!` })
     })
     app.get('/take-book', async (req, res) => {
       const result = await takeBook.find({ requester: req?.query?.email }).toArray();
@@ -211,7 +211,14 @@ async function run() {
       const result = await giveBook.find({ requester: req?.query?.email }).toArray();
       res.send(result)
     })
-
+    app.delete('/take-book/:id', async (req, res) => {
+      const result = await takeBook.deleteOne({ _id: req.params.id })
+      res.send(result)
+    })
+    app.delete('/give-book/:id', async (req, res) => {
+      const result = await giveBook.deleteOne({_id:req.params.id})
+      res.send(result)
+    })
     app.post("/exchange", async (req, res) => {
       const result = await exchange.insertOne(req.body);
       res.send(result);
