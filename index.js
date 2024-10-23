@@ -56,6 +56,7 @@ async function run() {
     const takeBook = Bookify.collection("takeBook");
     const giveBook = Bookify.collection("giveBook");
     const exchange = Bookify.collection("exchange");
+    const Request = Bookify.collection("exchange-request");
     const test = Bookify.collection("test");
     const users = Bookify.collection("users");
     const reviews = Bookify.collection("reviews");
@@ -216,20 +217,31 @@ async function run() {
       res.send(result)
     })
     app.delete('/give-book/:id', async (req, res) => {
-      const result = await giveBook.deleteOne({_id:req.params.id})
+      const result = await giveBook.deleteOne({ _id: req.params.id })
       res.send(result)
     })
-    app.post("/exchange", async (req, res) => {
-      const result = await exchange.insertOne(req.body);
-      res.send(result);
-    });
-    app.get("/exchange", async (req, res) => {
-      const result = await exchange.find().toArray();
+
+    app.delete('/take-books', async (req, res) => {
+      const result = await takeBook.deleteMany({ requester: { $regex: req.query.email } })
       res.send(result)
     })
+    app.delete('/give-books', async (req, res) => {
+      const result = await giveBook.deleteMany({ requester: { $regex: req.query.email } })
+      res.send(result)
+    })
+
+    // app.post("/exchange", async (req, res) => {
+    //   const result = await exchange.insertOne(req.body);
+    //   res.send(result);
+    // });
+    // app.get("/exchange", async (req, res) => {
+    //   const result = await exchange.find().toArray();
+    //   res.send(result)
+    // })
 
 
     // Update book
+
     app.put("/book/:id", async (req, res) => {
       const id = req.params.id;
       const updateDoc = {};
