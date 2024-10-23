@@ -94,6 +94,7 @@ async function run() {
       const genre = req.query.genre;
       const search = req.query.search;
       const email = req.query.email;
+      const excludeEmail = req.query.excludeEmail;
       let query = {};
 
       if (email && genre) {
@@ -104,7 +105,12 @@ async function run() {
         query = { title: { $regex: search, $options: "i" } };
       } else if (email) {
         query = { AuthorEmail: email };
+      } 
+      
+      if (excludeEmail) {
+        query = { AuthorEmail: { $ne: excludeEmail } };
       }
+
 
       const result = await books.find(query).toArray();
       res.send(result);
@@ -175,12 +181,11 @@ async function run() {
       const requesterBooks = await takeBook.find({ requester: req?.query?.email }).toArray()
       const uniqueBook = await takeBook.findOne({ _id: req?.query?.id })
       if (uniqueBook) {
-        return res.send({ message: 'You have already added this book.' });
+        return res.send({ message: 'Already added in take books' });
       }
-
       if (requesterBooks[0]?.AuthorEmail === req?.query?.AuthorEmail) {
         const result = await takeBook.insertOne(req.body)
-        return res.send(result)
+        return res.send({result,message:"Book added successfully!"})
       }
       else {
         if (requesterBooks?.length === 0) {
@@ -188,7 +193,7 @@ async function run() {
           return res.send(result)
         }
         else {
-          return res.send({ message: 'only one owner selected' });
+          return res.send({ message:`All books in this exchange must come from ${requesterBooks[0]?.owner}`});
         }
       }
     })
@@ -196,7 +201,7 @@ async function run() {
       const existed = await giveBook.findOne({ _id: req?.query?.id })
       if (existed) return res.send({ message: "Already added in give books" })
       const result = await giveBook.insertOne(req.body)
-      res.send(result)
+      res.send({result,message:`Book added successfully!`})
     })
     app.get('/take-book', async (req, res) => {
       const result = await takeBook.find({ requester: req?.query?.email }).toArray();
@@ -214,7 +219,7 @@ async function run() {
     app.get("/exchange", async (req, res) => {
       const result = await exchange.find().toArray();
       res.send(result)
-    }) 
+    })
 
 
     // Update book
