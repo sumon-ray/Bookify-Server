@@ -576,6 +576,19 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/genres", async (req, res) => {
+      try {
+        const genres = await books.aggregate([
+          { $group: { _id: "$genre" } }, 
+          { $project: { genre: "$_id", _id: 0 } } 
+        ]).toArray();
+    
+        res.json(genres);
+      } catch (error) {
+        console.error("Error fetching genres:", error);
+        res.status(500).json({ message: "Failed to fetch genres" });
+      }
+    });
     // Chat with Ai
     const cohere = new CohereClient({
       apiKey: "CO_API_KEY",
@@ -600,6 +613,7 @@ async function run() {
       }
     });
 
+    
     // test api
     app.post("/test", async (req, res) => {
       const result = await test.insertOne(req.body);
