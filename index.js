@@ -56,7 +56,7 @@ async function run() {
     const takeBook = Bookify.collection("takeBook");
     const giveBook = Bookify.collection("giveBook");
     const exchange = Bookify.collection("exchange");
-    const Request = Bookify.collection("exchange-request");
+    const request = Bookify.collection("exchange-request");
     const test = Bookify.collection("test");
     const users = Bookify.collection("users");
     const reviews = Bookify.collection("reviews");
@@ -93,6 +93,7 @@ async function run() {
     // Get all books or get by genre
     app.get("/books", async (req, res) => {
       const genre = req.query.genre;
+      const title = req.query.title;
       const search = req.query.search;
       const email = req.query.email;
       const excludeEmail = req.query.excludeEmail;
@@ -100,6 +101,8 @@ async function run() {
 
       if (email && genre) {
         query = { AuthorEmail: email, genre };
+      } else if (genre && title) {
+        query = { genre, title: { $ne: title } };
       } else if (genre) {
         query = { genre };
       } else if (search) {
@@ -177,6 +180,7 @@ async function run() {
       res.send(result);
     });
 
+
     // api for book exchange
     app.post('/take-book', async (req, res) => {
       const requesterBooks = await takeBook.find({ requester: req?.query?.email }).toArray()
@@ -216,19 +220,41 @@ async function run() {
       const result = await takeBook.deleteOne({ _id: req.params.id })
       res.send(result)
     })
-    app.delete('/give-book/:id', async (req, res) => {
-      const result = await giveBook.deleteOne({ _id: req.params.id })
-      res.send(result)
-    })
-
     app.delete('/take-books', async (req, res) => {
       const result = await takeBook.deleteMany({ requester: { $regex: req.query.email } })
+      res.send(result)
+    })
+    app.delete('/give-book/:id', async (req, res) => {
+      const result = await giveBook.deleteOne({ _id: req.params.id })
       res.send(result)
     })
     app.delete('/give-books', async (req, res) => {
       const result = await giveBook.deleteMany({ requester: { $regex: req.query.email } })
       res.send(result)
     })
+
+    app.post('/exchange-request', async (req, res) => {
+      const result = await request.insertOne(req.body)
+      res.send(result)
+    })
+
+    app.get('/exchange-request', async (req, res) => {
+      const requesterEmail = req?.query?.requesterEmail
+      const ownerEmail = req?.query?.ownerEmail
+
+      let query = {}
+      if (requesterEmail) {
+        query = { requesterEmail: { $regex: requesterEmail } }
+      } else if (ownerEmail) {
+        query = { ownerEmail: { $regex: ownerEmail } }
+      } else {
+       return res.send({ message: "You don't access the data!. Be careful" })
+      }
+
+      const result = await request.find(query).toArray()
+      res.send(result)
+    })
+
 
     // app.post("/exchange", async (req, res) => {
     //   const result = await exchange.insertOne(req.body);
