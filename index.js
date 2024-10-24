@@ -16,6 +16,7 @@ const allowedOrigins = [
   "https://bookify-mocha.vercel.app",
   "https://bookify06.vercel.app",
   "http://localhost:3000",
+  "https://bookify-server-lilac.vercel.app"
 ];
 app.use(
   cors({
@@ -272,7 +273,6 @@ async function run() {
       const id = req.params.id;
       const updateDoc = {};
 
-      // Dynamically set only the fields that are provided in the request body
       const allowedFields = [
         "title",
         "author",
@@ -634,6 +634,7 @@ async function run() {
         res.status(500).json({ message: "Failed to fetch genres" });
       }
     });
+    
     // Chat with Ai
     const cohere = new CohereClient({
       apiKey: "CO_API_KEY",
