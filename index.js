@@ -237,7 +237,6 @@ async function run() {
       const result = await request.insertOne(req.body)
       res.send(result)
     })
-
     app.get('/exchange-request', async (req, res) => {
       const requesterEmail = req?.query?.requesterEmail
       const ownerEmail = req?.query?.ownerEmail
@@ -248,22 +247,42 @@ async function run() {
       } else if (ownerEmail) {
         query = { ownerEmail: { $regex: ownerEmail } }
       } else {
-       return res.send({ message: "You don't access the data!. Be careful" })
+        return res.send({ message: "You don't access the data!. Be careful" })
       }
 
       const result = await request.find(query).toArray()
       res.send(result)
     })
 
+    app.put("/exchange", async (req, res) => {
+      const { requesterName, requesterEmail, requesterProfile, ownerEmail, ownerProfile, ownerName, ownerBooksIds, requesterBooksIds, id, status } = req?.body || {}
+      try {
 
-    // app.post("/exchange", async (req, res) => {
-    //   const result = await exchange.insertOne(req.body);
-    //   res.send(result);
-    // });
-    // app.get("/exchange", async (req, res) => {
-    //   const result = await exchange.find().toArray();
-    //   res.send(result)
-    // })
+        if (status !== 'pending') return res.send({ message: "Request is already approved." })
+
+        const requesterBooksUpdate = await books.updateMany(
+          { _id: { $in: requesterBooksIds.map(id => new ObjectId(id)) } },
+          { $set: { owner: ownerName, AuthorEmail: ownerEmail, AuthorProfile: ownerProfile } }
+        )
+        const ownerBooksUpdate = await books.updateMany(
+          { _id: { $in: ownerBooksIds.map(id => new ObjectId(id)) } },
+          { $set: { owner: requesterName, AuthorEmail: requesterEmail, AuthorProfile: requesterProfile } }
+        )
+
+        if (requesterBooksUpdate.modifiedCount > 0 && ownerBooksUpdate.modifiedCount > 0) {
+          const statusUpdate = await request.updateOne({ _id: new ObjectId(id) }, { $set: { status: 'approved' } })
+          if (statusUpdate.modifiedCount > 0) {
+            res.send({ message: "Book exchange approved successfully." })
+          } else {
+            res.send({ message: 'This book is already exchanged' });
+          }
+        }
+
+      } catch (error) {
+        res.send({ error: error.message })
+      }
+    });
+
 
 
     // Update book
@@ -621,13 +640,14 @@ async function run() {
       res.send(result);
     });
 
+
     app.get("/genres", async (req, res) => {
       try {
         const genres = await books.aggregate([
-          { $group: { _id: "$genre" } }, 
-          { $project: { genre: "$_id", _id: 0 } } 
+          { $group: { _id: "$genre" } },
+          { $project: { genre: "$_id", _id: 0 } }
         ]).toArray();
-    
+
         res.json(genres);
       } catch (error) {
         console.error("Error fetching genres:", error);
@@ -658,7 +678,7 @@ async function run() {
       }
     });
 
-    
+
     // test api
     app.post("/test", async (req, res) => {
       const result = await test.insertOne(req.body);
