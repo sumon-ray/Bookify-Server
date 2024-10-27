@@ -1,4 +1,4 @@
-const express = require("express");
+const express = require("express")
 const { CohereClient } = require("cohere-ai");
 const cors = require("cors");
 // const OpenAI = require('openai');
@@ -56,7 +56,7 @@ async function run() {
     const books = Bookify.collection("books");
     const takeBook = Bookify.collection("takeBook");
     const giveBook = Bookify.collection("giveBook");
-    const exchange = Bookify.collection("exchange");
+    // const exchange = Bookify.collection("exchange");
     const request = Bookify.collection("exchange-request");
     const test = Bookify.collection("test");
     const users = Bookify.collection("users");
@@ -94,6 +94,7 @@ async function run() {
     // Get all books or get by genre
     app.get("/books", async (req, res) => {
       const genre = req.query.genre;
+      const owner = req.query.owner || "";
       const title = req.query.title;
       const search = req.query.search;
       const email = req.query.email;
@@ -104,6 +105,10 @@ async function run() {
         query = { AuthorEmail: email, genre };
       } else if (genre && title) {
         query = { genre, title: { $ne: title } };
+      } else if (owner && excludeEmail) {
+        query = { AuthorEmail: { $ne: excludeEmail }, owner };
+      } else if (excludeEmail) {
+        query = { AuthorEmail: { $ne: excludeEmail } };
       } else if (genre) {
         query = { genre };
       } else if (search) {
@@ -112,9 +117,7 @@ async function run() {
         query = { AuthorEmail: email };
       }
 
-      if (excludeEmail) {
-        query = { AuthorEmail: { $ne: excludeEmail } };
-      }
+
 
 
       const result = await books.find(query).toArray();
@@ -166,6 +169,8 @@ async function run() {
       });
       res.send(result);
     });
+
+
     //  update my books api
     app.patch("/book/:id", async (req, res) => {
       const id = req.params.id;
@@ -254,11 +259,18 @@ async function run() {
       const result = await request.find(query).toArray()
       res.send(result)
     })
+    app.patch('/get-request-cancel', async (req, res) => {
+      const result = await request.updateOne({ _id: new ObjectId(req.query.id) }, { $set: { ownerEmail: '', status: 'canceled' } })
+      res.send(result)
+    })
+    app.delete('/send-request-delete', async (req, res) => {
+      const result = await request.deleteOne({_id: new ObjectId(req?.query?.id)})
+      res.send(result)
+    })
 
     app.put("/exchange", async (req, res) => {
       const { requesterName, requesterEmail, requesterProfile, ownerEmail, ownerProfile, ownerName, ownerBooksIds, requesterBooksIds, id, status } = req?.body || {}
       try {
-
         if (status !== 'pending') return res.send({ message: "Request is already approved." })
 
         const requesterBooksUpdate = await books.updateMany(
@@ -287,7 +299,6 @@ async function run() {
 
 
     // Update book
-
     app.put("/book/:id", async (req, res) => {
       const id = req.params.id;
       const updateDoc = {};
@@ -654,7 +665,7 @@ async function run() {
         res.status(500).json({ message: "Failed to fetch genres" });
       }
     });
-    
+
     // Chat with Ai
     const cohere = new CohereClient({
       apiKey: "CO_API_KEY",
