@@ -1,5 +1,7 @@
-const express = require("express");
+const express = require("express")
+const { CohereClient } = require("cohere-ai");
 const cors = require("cors");
+// const OpenAI = require('openai');
 const bcrypt = require("bcrypt");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
@@ -12,7 +14,9 @@ const port = process.env.PORT || 4000;
 // CORS configuration
 const allowedOrigins = [
   "https://bookify-mocha.vercel.app",
+  "https://bookify06.vercel.app",
   "http://localhost:3000",
+  "https://bookify-server-lilac.vercel.app"
 ];
 app.use(
   cors({
@@ -50,23 +54,61 @@ async function run() {
     const Bookify = client.db("Bookify");
     // collection
     const books = Bookify.collection("books");
-    const exchange = Bookify.collection("exchange");
+    const takeBook = Bookify.collection("takeBook");
+    const giveBook = Bookify.collection("giveBook");
+    // const exchange = Bookify.collection("exchange");
+    const request = Bookify.collection("exchange-request");
     const test = Bookify.collection("test");
     const users = Bookify.collection("users");
     const reviews = Bookify.collection("reviews");
     const rent = Bookify.collection("rent");
     const audioBook = Bookify.collection("audioBook");
 
+    app.get("/dashboard", async (req, res) => {
+      const exchangeBooks = await books.countDocuments();
+      const rentBooks = await rent.countDocuments();
+      const audioBooks = await audioBook.countDocuments();
+      const totalUsers = await users.countDocuments();
+      const book = await books.find().toArray();
+      const topBooks = book.filter((b) => b.rating < 4.5);
+      const totalReview = await reviews.find().toArray();
+      const Users = await users.find().toArray();
+      const date = new Date();
+      const thisMonth = date.getMonth() + 1;
+      const newUsers = Users.filter(
+        (u) =>
+          parseInt(u.createdAt.toLocaleString().split("/")[0]) === thisMonth
+      );
+      res.send({
+        exchangeBooks,
+        rentBooks,
+        audioBooks,
+        totalUsers,
+        topBooks,
+        newUsers,
+        totalReview,
+      });
+    });
+
     // exchange books
     // Get all books or get by genre
     app.get("/books", async (req, res) => {
       const genre = req.query.genre;
+      const owner = req.query.owner || "";
+      const title = req.query.title;
       const search = req.query.search;
       const email = req.query.email;
+      const excludeEmail = req.query.excludeEmail;
       let query = {};
 
       if (email && genre) {
         query = { AuthorEmail: email, genre };
+      } else if (genre && title) {
+        query = { genre, title: { $ne: title } };
+      } else if (owner && excludeEmail) {
+        query = { AuthorEmail: { $ne: excludeEmail }, owner };
+      } else if (excludeEmail) {
+        query = { AuthorEmail: { $ne: excludeEmail } };
       } else if (genre) {
         query = { genre };
       } else if (search) {
@@ -74,6 +116,9 @@ async function run() {
       } else if (email) {
         query = { AuthorEmail: email };
       }
+
+
+
 
       const result = await books.find(query).toArray();
       res.send(result);
@@ -124,6 +169,8 @@ async function run() {
       });
       res.send(result);
     });
+
+
     //  update my books api
     app.patch("/book/:id", async (req, res) => {
       const id = req.params.id;
@@ -138,15 +185,117 @@ async function run() {
       const result = await books.updateOne(filter, updateDoc, options);
       res.send(result);
     });
+
+
     // api for book exchange
     app.post('/take-book', async (req, res) => {
-      const result = await exchange.insertOne(req.body)
-      res.send(result)
+      const requesterBooks = await takeBook.find({ requester: req?.query?.email }).toArray()
+      const uniqueBook = await takeBook.findOne({ _id: req?.query?.id })
+      if (uniqueBook) {
+        return res.send({ message: 'Already added in take books' });
+      }
+      if (requesterBooks[0]?.AuthorEmail === req?.query?.AuthorEmail) {
+        const result = await takeBook.insertOne(req.body)
+        return res.send({ result, message: "Book added successfully!" })
+      }
+      else {
+        if (requesterBooks?.length === 0) {
+          const result = await takeBook.insertOne(req.body)
+          return res.send(result)
+        }
+        else {
+          return res.send({ message: `All books in this exchange must come from ${requesterBooks[0]?.owner}` });
+        }
+      }
+    })
+    app.post('/give-book', async (req, res) => {
+      const existed = await giveBook.findOne({ _id: req?.query?.id })
+      if (existed) return res.send({ message: "Already added in give books" })
+      const result = await giveBook.insertOne(req.body)
+      res.send({ result, message: `Book added successfully!` })
     })
     app.get('/take-book', async (req, res) => {
-      const result = await exchange.find({ requester: req?.query?.email }).toArray();
+      const result = await takeBook.find({ requester: req?.query?.email }).toArray();
       res.send(result)
     })
+    app.get('/give-book', async (req, res) => {
+      const result = await giveBook.find({ requester: req?.query?.email }).toArray();
+      res.send(result)
+    })
+    app.delete('/take-book/:id', async (req, res) => {
+      const result = await takeBook.deleteOne({ _id: req.params.id })
+      res.send(result)
+    })
+    app.delete('/take-books', async (req, res) => {
+      const result = await takeBook.deleteMany({ requester: { $regex: req.query.email } })
+      res.send(result)
+    })
+    app.delete('/give-book/:id', async (req, res) => {
+      const result = await giveBook.deleteOne({ _id: req.params.id })
+      res.send(result)
+    })
+    app.delete('/give-books', async (req, res) => {
+      const result = await giveBook.deleteMany({ requester: { $regex: req.query.email } })
+      res.send(result)
+    })
+
+    app.post('/exchange-request', async (req, res) => {
+      const result = await request.insertOne(req.body)
+      res.send(result)
+    })
+    app.get('/exchange-request', async (req, res) => {
+      const requesterEmail = req?.query?.requesterEmail
+      const ownerEmail = req?.query?.ownerEmail
+
+      let query = {}
+      if (requesterEmail) {
+        query = { requesterEmail: { $regex: requesterEmail } }
+      } else if (ownerEmail) {
+        query = { ownerEmail: { $regex: ownerEmail } }
+      } else {
+        return res.send({ message: "You don't access the data!. Be careful" })
+      }
+
+      const result = await request.find(query).toArray()
+      res.send(result)
+    })
+    app.patch('/get-request-cancel', async (req, res) => {
+      const result = await request.updateOne({ _id: new ObjectId(req.query.id) }, { $set: { ownerEmail: '', status: 'canceled' } })
+      res.send(result)
+    })
+    app.delete('/send-request-delete', async (req, res) => {
+      const result = await request.deleteOne({_id: new ObjectId(req?.query?.id)})
+      res.send(result)
+    })
+
+    app.put("/exchange", async (req, res) => {
+      const { requesterName, requesterEmail, requesterProfile, ownerEmail, ownerProfile, ownerName, ownerBooksIds, requesterBooksIds, id, status } = req?.body || {}
+      try {
+        if (status !== 'pending') return res.send({ message: "Request is already approved." })
+
+        const requesterBooksUpdate = await books.updateMany(
+          { _id: { $in: requesterBooksIds.map(id => new ObjectId(id)) } },
+          { $set: { owner: ownerName, AuthorEmail: ownerEmail, AuthorProfile: ownerProfile } }
+        )
+        const ownerBooksUpdate = await books.updateMany(
+          { _id: { $in: ownerBooksIds.map(id => new ObjectId(id)) } },
+          { $set: { owner: requesterName, AuthorEmail: requesterEmail, AuthorProfile: requesterProfile } }
+        )
+
+        if (requesterBooksUpdate.modifiedCount > 0 && ownerBooksUpdate.modifiedCount > 0) {
+          const statusUpdate = await request.updateOne({ _id: new ObjectId(id) }, { $set: { status: 'approved' } })
+          if (statusUpdate.modifiedCount > 0) {
+            res.send({ message: "Book exchange approved successfully." })
+          } else {
+            res.send({ message: 'This book is already exchanged' });
+          }
+        }
+
+      } catch (error) {
+        res.send({ error: error.message })
+      }
+    });
+
 
 
     // Update book
@@ -154,11 +303,21 @@ async function run() {
       const id = req.params.id;
       const updateDoc = {};
 
-      // Dynamically set only the fields that are provided in the request body
       const allowedFields = [
-        "title", "author", "genre", "condition", "description",
-        "coverImage", "exchangeStatus", "publishYear", "totalPage",
-        "location", "rating", "AuthorEmail", "AuthorProfile", "owner"
+        "title",
+        "author",
+        "genre",
+        "condition",
+        "description",
+        "coverImage",
+        "exchangeStatus",
+        "publishYear",
+        "totalPage",
+        "location",
+        "rating",
+        "AuthorEmail",
+        "AuthorProfile",
+        "owner",
       ];
 
       allowedFields.forEach((field) => {
@@ -173,7 +332,9 @@ async function run() {
         const result = await books.updateOne(filter, { $set: updateDoc });
 
         if (result.modifiedCount === 0) {
-          return res.status(404).send({ message: "Book not found or no changes made." });
+          return res
+            .status(404)
+            .send({ message: "Book not found or no changes made." });
         }
         res.send(result);
       } catch (error) {
@@ -188,13 +349,24 @@ async function run() {
       const currentPage = parseInt(req?.query?.currentPage) || 1;
       const limit = parseInt(req?.query?.limit) || 10;
       const skip = (currentPage - 1) * limit;
-      const { Author, Publisher, PublishYear, Language, Price, Genre } = req?.query || {}
-      let [minPrice, maxPrice] = Price?.split(",").map(Number) || [350, 500]
+      const { Author, Publisher, PublishYear, Language, Price, Genre } =
+        req?.query || {};
+      let [minPrice, maxPrice] = Price?.split(",").map(Number) || [350, 500];
 
       // console.log(Genre.split(','))
-      let query = {}
+      let query = {};
 
-      if (Author && Publisher && PublishYear && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+      if (
+        Author &&
+        Publisher &&
+        PublishYear &&
+        Language &&
+        minPrice &&
+        maxPrice &&
+        !isNaN(minPrice) &&
+        !isNaN(maxPrice) &&
+        Genre
+      ) {
         query = {
           Author,
           Publisher,
@@ -203,13 +375,21 @@ async function run() {
           $expr: {
             $and: [
               { $gte: [{ $toDouble: "$Price" }, minPrice] },
-              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
-            ]
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] },
+            ],
           },
-          Genre: { $in: Genre.split(',') }
-        }
-      }
-      else if (Publisher && PublishYear && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+          Genre: { $in: Genre.split(",") },
+        };
+      } else if (
+        Publisher &&
+        PublishYear &&
+        Language &&
+        minPrice &&
+        maxPrice &&
+        !isNaN(minPrice) &&
+        !isNaN(maxPrice) &&
+        Genre
+      ) {
         query = {
           Publisher,
           "Year of Publication": PublishYear,
@@ -217,13 +397,21 @@ async function run() {
           $expr: {
             $and: [
               { $gte: [{ $toDouble: "$Price" }, minPrice] },
-              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
-            ]
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] },
+            ],
           },
-          Genre: { $in: Genre.split(',') }
-        }
-      }
-      else if (Author && PublishYear && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+          Genre: { $in: Genre.split(",") },
+        };
+      } else if (
+        Author &&
+        PublishYear &&
+        Language &&
+        minPrice &&
+        maxPrice &&
+        !isNaN(minPrice) &&
+        !isNaN(maxPrice) &&
+        Genre
+      ) {
         query = {
           Author,
           "Year of Publication": PublishYear,
@@ -231,13 +419,21 @@ async function run() {
           $expr: {
             $and: [
               { $gte: [{ $toDouble: "$Price" }, minPrice] },
-              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
-            ]
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] },
+            ],
           },
-          Genre: { $in: Genre.split(',') }
-        }
-      }
-      else if (Author && Publisher && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+          Genre: { $in: Genre.split(",") },
+        };
+      } else if (
+        Author &&
+        Publisher &&
+        Language &&
+        minPrice &&
+        maxPrice &&
+        !isNaN(minPrice) &&
+        !isNaN(maxPrice) &&
+        Genre
+      ) {
         query = {
           Author,
           Publisher,
@@ -245,71 +441,96 @@ async function run() {
           $expr: {
             $and: [
               { $gte: [{ $toDouble: "$Price" }, minPrice] },
-              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
-            ]
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] },
+            ],
           },
-          Genre: { $in: Genre.split(',') }
-        }
-      }
-      else if (PublishYear && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+          Genre: { $in: Genre.split(",") },
+        };
+      } else if (
+        PublishYear &&
+        Language &&
+        minPrice &&
+        maxPrice &&
+        !isNaN(minPrice) &&
+        !isNaN(maxPrice) &&
+        Genre
+      ) {
         query = {
           "Year of Publication": PublishYear,
           Language,
           $expr: {
             $and: [
               { $gte: [{ $toDouble: "$Price" }, minPrice] },
-              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
-            ]
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] },
+            ],
           },
-          Genre: { $in: Genre.split(',') }
-        }
-      }
-      else if (Author && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+          Genre: { $in: Genre.split(",") },
+        };
+      } else if (
+        Author &&
+        Language &&
+        minPrice &&
+        maxPrice &&
+        !isNaN(minPrice) &&
+        !isNaN(maxPrice) &&
+        Genre
+      ) {
         query = {
           Author,
           Language,
           $expr: {
             $and: [
               { $gte: [{ $toDouble: "$Price" }, minPrice] },
-              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
-            ]
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] },
+            ],
           },
-          Genre: { $in: Genre.split(',') }
-        }
-      }
-      else if (Publisher && Language && minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+          Genre: { $in: Genre.split(",") },
+        };
+      } else if (
+        Publisher &&
+        Language &&
+        minPrice &&
+        maxPrice &&
+        !isNaN(minPrice) &&
+        !isNaN(maxPrice) &&
+        Genre
+      ) {
         query = {
           Publisher,
           Language,
           $expr: {
             $and: [
               { $gte: [{ $toDouble: "$Price" }, minPrice] },
-              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
-            ]
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] },
+            ],
           },
-          Genre: { $in: Genre.split(',') }
-        }
-      }
-      else if (minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice) && Genre) {
+          Genre: { $in: Genre.split(",") },
+        };
+      } else if (
+        minPrice &&
+        maxPrice &&
+        !isNaN(minPrice) &&
+        !isNaN(maxPrice) &&
+        Genre
+      ) {
         query = {
           $expr: {
             $and: [
               { $gte: [{ $toDouble: "$Price" }, minPrice] },
-              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
-            ]
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] },
+            ],
           },
-          Genre: { $in: Genre.split(',') }
-        }
-      }
-      else if (minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice)) {
+          Genre: { $in: Genre.split(",") },
+        };
+      } else if (minPrice && maxPrice && !isNaN(minPrice) && !isNaN(maxPrice)) {
         query = {
           $expr: {
             $and: [
               { $gte: [{ $toDouble: "$Price" }, minPrice] },
-              { $lte: [{ $toDouble: "$Price" }, maxPrice] }
-            ]
+              { $lte: [{ $toDouble: "$Price" }, maxPrice] },
+            ],
           },
-        }
+        };
       }
 
       const totalBooks = await rent.countDocuments(query);
@@ -321,8 +542,8 @@ async function run() {
     // for only genre
     app.get("/rent-values", async (req, res) => {
       const result = await rent.find().toArray();
-      res.send(result)
-    })
+      res.send(result);
+    });
 
     // audioBooks
     //  get all audio books api
@@ -430,6 +651,46 @@ async function run() {
       res.send(result);
     });
 
+
+    app.get("/genres", async (req, res) => {
+      try {
+        const genres = await books.aggregate([
+          { $group: { _id: "$genre" } },
+          { $project: { genre: "$_id", _id: 0 } }
+        ]).toArray();
+
+        res.json(genres);
+      } catch (error) {
+        console.error("Error fetching genres:", error);
+        res.status(500).json({ message: "Failed to fetch genres" });
+      }
+    });
+
+    // Chat with Ai
+    const cohere = new CohereClient({
+      apiKey: "CO_API_KEY",
+    });
+
+    app.use(express.json());
+
+    app.post("/ask-ai", async (req, res) => {
+      try {
+        const { query } = req.body;
+        const chatResponse = await cohere.chat({
+          model: "command",
+          message: query,
+        });
+
+        res.json({ answer: chatResponse.text });
+      } catch (error) {
+        console.error("Error:", error);
+        res
+          .status(500)
+          .json({ error: "An error occurred while processing your request." });
+      }
+    });
+
+
     // test api
     app.post("/test", async (req, res) => {
       const result = await test.insertOne(req.body);
@@ -450,3 +711,7 @@ run().catch(console.dir);
 app.listen(port, () => {
   console.log("bookify server is run properly");
 });
+
+
+
+
