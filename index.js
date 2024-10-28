@@ -97,17 +97,24 @@ async function run() {
       const genre = req.query.genre;
       const owner = req.query.owner || "";
       const title = req.query.title;
-      const search = req.query.search;
+      const search = req.query.search || ''
       const email = req.query.email;
       const excludeEmail = req.query.excludeEmail;
       let query = {};
 
-      if (email && genre) {
+
+      if (owner && excludeEmail && search) {
+        query = { AuthorEmail: { $ne: excludeEmail }, owner, title: { $regex: search, $options: "i" } };
+      } else if (owner !== ' ' && owner && excludeEmail) {
+        query = { AuthorEmail: { $ne: excludeEmail }, owner };
+      } else if (search && excludeEmail) {
+        query = { AuthorEmail: { $ne: excludeEmail }, title: { $regex: search, $options: "i" } };
+      } else if (email && genre) {
         query = { AuthorEmail: email, genre };
       } else if (genre && title) {
         query = { genre, title: { $ne: title } };
-      } else if (owner && excludeEmail) {
-        query = { AuthorEmail: { $ne: excludeEmail }, owner };
+      } else if (email && search) {
+        query = { AuthorEmail: email, title: { $regex: search, $options: "i" } };
       } else if (excludeEmail) {
         query = { AuthorEmail: { $ne: excludeEmail } };
       } else if (genre) {
@@ -117,9 +124,6 @@ async function run() {
       } else if (email) {
         query = { AuthorEmail: email };
       }
-
-
-
 
       const result = await books.find(query).toArray();
       res.send(result);
@@ -298,12 +302,12 @@ async function run() {
     });
 
     // Notification
-    app.post('/notification', async (req,res) => {
-      const result= await notification.insertOne(req.body);
+    app.post('/notification', async (req, res) => {
+      const result = await notification.insertOne(req.body);
       res.send(result)
     })
-    app.get('/notifications', async (req,res) => {
-      const result= await notification.find().toArray()
+    app.get('/notifications', async (req, res) => {
+      const result = await notification.find({ownerEmail:req.query.owner}).toArray()
       res.send(result)
     })
 
