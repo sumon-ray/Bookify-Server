@@ -56,6 +56,7 @@ async function run() {
     const books = Bookify.collection("books");
     const takeBook = Bookify.collection("takeBook");
     const giveBook = Bookify.collection("giveBook");
+    const notification = Bookify.collection("notification");
     // const exchange = Bookify.collection("exchange");
     const request = Bookify.collection("exchange-request");
     const test = Bookify.collection("test");
@@ -264,7 +265,7 @@ async function run() {
       res.send(result)
     })
     app.delete('/send-request-delete', async (req, res) => {
-      const result = await request.deleteOne({_id: new ObjectId(req?.query?.id)})
+      const result = await request.deleteOne({ _id: new ObjectId(req?.query?.id) })
       res.send(result)
     })
 
@@ -296,6 +297,15 @@ async function run() {
       }
     });
 
+    // Notification
+    app.post('/notification', async (req,res) => {
+      const result= await notification.insertOne(req.body);
+      res.send(result)
+    })
+    app.get('/notifications', async (req,res) => {
+      const result= await notification.find().toArray()
+      res.send(result)
+    })
 
 
     // Update book
