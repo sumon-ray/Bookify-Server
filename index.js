@@ -57,12 +57,14 @@ async function run() {
     const takeBook = Bookify.collection("takeBook");
     const giveBook = Bookify.collection("giveBook");
     const notification = Bookify.collection("notification");
+    const message = Bookify.collection("message");
     // const exchange = Bookify.collection("exchange");
     const request = Bookify.collection("exchange-request");
     const test = Bookify.collection("test");
     const users = Bookify.collection("users");
     const reviews = Bookify.collection("reviews");
     const rent = Bookify.collection("rent");
+    const cart = Bookify.collection("cart");
     const audioBook = Bookify.collection("audioBook");
 
     app.get("/dashboard", async (req, res) => {
@@ -307,10 +309,17 @@ async function run() {
       res.send(result)
     })
     app.get('/notifications', async (req, res) => {
-      const result = await notification.find({ownerEmail:req.query.owner}).toArray()
+      const owner = req.query.owner
+      const approved = req.query.approved
+      let query = {}
+      if (owner) {
+        query = { ownerEmail: req.query.owner }
+      } else if (approved) {
+        query = { approvedEmail: req.query.approved }
+      }
+      const result = await notification.find(query).toArray()
       res.send(result)
     })
-
 
     // Update book
     app.put("/book/:id", async (req, res) => {
@@ -553,11 +562,34 @@ async function run() {
       res.send({ result, totalPages });
     });
 
+    app.post('/cart', async (req, res) => {
+      const existed = await cart.findOne({ _id: req?.query?.id })
+      if (existed) {
+        return res.send({ message: 'This book already added in cart' })
+      }
+      const result = await cart.insertOne(req.body)
+      res.send(result)
+    })
+
+    app.get('/cart', async (req, res) => {
+      const result = await cart.find({ cartOwner: req.query.email }).toArray()
+      res.send(result);
+    })
+
+
+    // chat system
+    app.post('/message', async (req, res) => {
+      const result = await message.insertOne(req.body)
+      res.send(result)
+    })
+
+
     // for only genre
     app.get("/rent-values", async (req, res) => {
       const result = await rent.find().toArray();
       res.send(result);
     });
+
 
     // audioBooks
     //  get all audio books api
