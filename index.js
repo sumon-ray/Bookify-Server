@@ -576,11 +576,16 @@ async function run() {
       res.send(result);
     })
 
-
     // chat system
     app.post('/message', async (req, res) => {
       const result = await message.insertOne(req.body)
       res.send(result)
+    })
+    app.get('/message', async (req, res) => {
+      const senderEmail = req.query.senderEmail;
+      const receiverEmail = req.query.receiverEmail;
+      const result = await message.find({ senderEmail, receiverEmail }).toArray();
+      res.send(result);
     })
 
 
