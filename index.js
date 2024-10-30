@@ -582,9 +582,14 @@ async function run() {
       res.send(result)
     })
     app.get('/message', async (req, res) => {
-      const senderEmail = req.query.senderEmail;
-      const receiverEmail = req.query.receiverEmail;
-      const result = await message.find({ senderEmail, receiverEmail }).toArray();
+      const email1 = req.query.senderEmail;
+      const email2 = req.query.receiverEmail;
+      const result = await message.find({
+        $or: [
+          { senderEmail: email1, receiverEmail: email2 },
+          { senderEmail: email2, receiverEmail: email1 }
+        ]
+      }).toArray();
       res.send(result);
     })
 
