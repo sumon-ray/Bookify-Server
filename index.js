@@ -56,12 +56,15 @@ async function run() {
     const books = Bookify.collection("books");
     const takeBook = Bookify.collection("takeBook");
     const giveBook = Bookify.collection("giveBook");
+    const notification = Bookify.collection("notification");
+    const message = Bookify.collection("message");
     // const exchange = Bookify.collection("exchange");
     const request = Bookify.collection("exchange-request");
     const test = Bookify.collection("test");
     const users = Bookify.collection("users");
     const reviews = Bookify.collection("reviews");
     const rent = Bookify.collection("rent");
+    const cart = Bookify.collection("cart");
     const audioBook = Bookify.collection("audioBook");
 
     app.get("/dashboard", async (req, res) => {
@@ -96,17 +99,24 @@ async function run() {
       const genre = req.query.genre;
       const owner = req.query.owner || "";
       const title = req.query.title;
-      const search = req.query.search;
+      const search = req.query.search || ''
       const email = req.query.email;
       const excludeEmail = req.query.excludeEmail;
       let query = {};
 
-      if (email && genre) {
+
+      if (owner && excludeEmail && search) {
+        query = { AuthorEmail: { $ne: excludeEmail }, owner, title: { $regex: search, $options: "i" } };
+      } else if (owner !== ' ' && owner && excludeEmail) {
+        query = { AuthorEmail: { $ne: excludeEmail }, owner };
+      } else if (search && excludeEmail) {
+        query = { AuthorEmail: { $ne: excludeEmail }, title: { $regex: search, $options: "i" } };
+      } else if (email && genre) {
         query = { AuthorEmail: email, genre };
       } else if (genre && title) {
         query = { genre, title: { $ne: title } };
-      } else if (owner && excludeEmail) {
-        query = { AuthorEmail: { $ne: excludeEmail }, owner };
+      } else if (email && search) {
+        query = { AuthorEmail: email, title: { $regex: search, $options: "i" } };
       } else if (excludeEmail) {
         query = { AuthorEmail: { $ne: excludeEmail } };
       } else if (genre) {
@@ -116,9 +126,6 @@ async function run() {
       } else if (email) {
         query = { AuthorEmail: email };
       }
-
-
-
 
       const result = await books.find(query).toArray();
       res.send(result);
@@ -264,7 +271,7 @@ async function run() {
       res.send(result)
     })
     app.delete('/send-request-delete', async (req, res) => {
-      const result = await request.deleteOne({_id: new ObjectId(req?.query?.id)})
+      const result = await request.deleteOne({ _id: new ObjectId(req?.query?.id) })
       res.send(result)
     })
 
@@ -296,7 +303,23 @@ async function run() {
       }
     });
 
-
+    // Notification
+    app.post('/notification', async (req, res) => {
+      const result = await notification.insertOne(req.body);
+      res.send(result)
+    })
+    app.get('/notifications', async (req, res) => {
+      const owner = req.query.owner
+      const approved = req.query.approved
+      let query = {}
+      if (owner) {
+        query = { ownerEmail: req.query.owner }
+      } else if (approved) {
+        query = { approvedEmail: req.query.approved }
+      }
+      const result = await notification.find(query).toArray()
+      res.send(result)
+    })
 
     // Update book
     app.put("/book/:id", async (req, res) => {
@@ -539,11 +562,39 @@ async function run() {
       res.send({ result, totalPages });
     });
 
+    app.post('/cart', async (req, res) => {
+      const existed = await cart.findOne({ _id: req?.query?.id })
+      if (existed) {
+        return res.send({ message: 'This book already added in cart' })
+      }
+      const result = await cart.insertOne(req.body)
+      res.send(result)
+    })
+
+    app.get('/cart', async (req, res) => {
+      const result = await cart.find({ cartOwner: req.query.email }).toArray()
+      res.send(result);
+    })
+
+    // chat system
+    app.post('/message', async (req, res) => {
+      const result = await message.insertOne(req.body)
+      res.send(result)
+    })
+    app.get('/message', async (req, res) => {
+      const senderEmail = req.query.senderEmail;
+      const receiverEmail = req.query.receiverEmail;
+      const result = await message.find({ senderEmail, receiverEmail }).toArray();
+      res.send(result);
+    })
+
+
     // for only genre
     app.get("/rent-values", async (req, res) => {
       const result = await rent.find().toArray();
       res.send(result);
     });
+
 
     // audioBooks
     //  get all audio books api
