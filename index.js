@@ -33,11 +33,6 @@ app.use(
 );
 
 
-
-
-
-
-
 // home path
 app.get("/", (req, res) => {
   res.send("run properly");
@@ -109,8 +104,7 @@ async function run() {
       const email = req.query.email;
       const excludeEmail = req.query.excludeEmail;
       let query = {};
-
-
+      
       if (owner && excludeEmail && search) {
         query = { AuthorEmail: { $ne: excludeEmail }, owner, title: { $regex: search, $options: "i" } };
       } else if (owner !== ' ' && owner && excludeEmail) {
