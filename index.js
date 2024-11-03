@@ -4,7 +4,7 @@ const cors = require("cors");
 // const OpenAI = require('openai');
 const bcrypt = require("bcrypt");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-
+const axios = require('axios');
 const app = express();
 require("dotenv").config();
 app.use(cors());
@@ -15,8 +15,8 @@ const port = process.env.PORT || 4000;
 const allowedOrigins = [
   "https://bookify-mocha.vercel.app",
   "https://bookify06.vercel.app",
+  "https://bookify-server-lilac.vercel.app",
   "http://localhost:3000",
-  "https://bookify-server-lilac.vercel.app"
 ];
 app.use(
   cors({
@@ -31,6 +31,12 @@ app.use(
     credentials: true,
   })
 );
+
+
+
+
+
+
 
 // home path
 app.get("/", (req, res) => {
@@ -746,6 +752,48 @@ async function run() {
       }
     });
 
+    
+
+// Create a POST api
+app.post("/generate-content", async (req, res) => {
+  const { prompt } = req.body;
+  const apiKey = process.env.GEMINI_API_KEY;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+
+  const data = {
+    contents: [
+      {
+        parts: [
+          {
+            text: prompt,
+          },
+        ],
+      },
+    ],
+  };
+
+  // console.log("Request Payload:", JSON.stringify(data)); 
+
+  try {
+    const response = await axios.post(url, data);
+    // console.log("Gemini API Response:", response.data);
+
+    const candidates = response.data.candidates;
+    if (candidates && candidates.length > 0) {
+      const content = candidates[0].content;
+      // console.log("Content Object:", content);
+
+      const answer = content.parts.map(part => part.text).join('');
+      res.json({ answer }); 
+    } else {
+      res.json({ answer: "No response from API" });
+    }
+  } catch (error) {
+    console.error("Error calling Gemini API:", error.response ? error.response.data : error.message);
+    res.status(500).json({ error: "Failed to generate content." });
+  }
+});
+
 
     // test api
     app.post("/test", async (req, res) => {
@@ -760,7 +808,11 @@ async function run() {
     );
   } finally {
   }
+
 }
+
+
+
 run().catch(console.dir);
 
 // the port
