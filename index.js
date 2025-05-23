@@ -746,7 +746,6 @@ async function run() {
       }
     });
 
-    
 
 // Create a POST api
 app.post("/generate-content", async (req, res) => {
@@ -813,7 +812,6 @@ run().catch(console.dir);
 app.listen(port, () => {
   console.log("bookify server is run properly");
 });
-
 
 
 
